@@ -1,9 +1,3 @@
-import json
-from googleapiclient.discovery import build
-import sqlite3
-import pandas as pd
-import nltk
-import matplotlib.pyplot as plt
 """
 Important notes:
 - youtube api wasn't supporting some of the provided ISO 3166-1 alpha 2 codes of countries so
@@ -13,11 +7,19 @@ Important notes:
     https://stackoverflow.com/questions/54573853/nltk-available-languages-for-stopwords
 
 """
-#youtube -> json -> to pandas df
-# dataframe description words -> sql database (Word | POS | num occurrences)
-#
 #county codes: https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2
 #most populated countries:https://www.worldometers.info/world-population/population-by-country/
+
+
+import json
+from googleapiclient.discovery import build
+import sqlite3
+import pandas as pd
+import nltk
+import matplotlib.pyplot as plt
+
+from title_generator import TitleGenerator
+
 
 API_KEY = "AIzaSyDqitOoj1fCMdzUHapDY358e5Ys4_yN4Os"
 json_file_name = "mostPopularVideosByCountry.json"
@@ -90,8 +92,8 @@ def filter_words(country, words):
 
     # after examining, we want to remove additional words that are irrelevant
     irrelevant_words = ["http", "com", "www"]
-    only_words = [word for word in words if word not in stop_words and word not in irrelevant_words]
-
+    only_words = [word.lower() for word in words if word not in stop_words and word not in irrelevant_words]
+    only_words = [word for word in only_words if not (len(word) == 1 and word not in "ai")]
     return only_words
 
 
@@ -121,7 +123,7 @@ def create_word_database(country, freqD):
 
     conn.commit()
     conn.close()
-
+    return db_name
 
 
 def get_freqd_visualization(country,frequencies):
@@ -145,9 +147,10 @@ def main():
         json_to_df(country)
         country_dataframes[country] = json_to_df(country)
         dist = get_word_dist(country, country_dataframes[country].title)
-        create_word_database(country, dist)
-        get_freqd_visualization(country,dist)
+        db_name = create_word_database(country, dist)
 
+        generator = TitleGenerator(db_name)
+        print("Generated Popular Youtube Video title: ", generator.generate_title1())
 
 if __name__ == '__main__':
     main()
