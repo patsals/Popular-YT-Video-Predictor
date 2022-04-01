@@ -92,9 +92,10 @@ def filter_words(country, words):
 
     # after examining, we want to remove additional words that are irrelevant
     irrelevant_words = ["http", "com", "www"]
-    only_words = [word.lower() for word in words if word not in stop_words and word not in irrelevant_words]
-    only_words = [word for word in only_words if not (len(word) == 1 and word not in "ai")]
-    return only_words
+    only_relevant_words = [word.lower() for word in words if word not in stop_words and word not in irrelevant_words]
+    valid_length_words = [word.strip() for word in only_relevant_words if not (len(word) == 1 and word not in "ai")]
+
+    return valid_length_words
 
 
 
@@ -102,8 +103,9 @@ def create_word_database(country, freqD):
     db_name = country.replace(" ", "") + "_popular_words"
     conn = sqlite3.connect(db_name + ".db")
     cur = conn.cursor()
+    tagged_words = dict(list(filter(lambda tup: tup[0] in nltk.corpus.words.words() or \
+                             tup[1] in ("NN","NNS","NNP"), nltk.pos_tag((freqD).keys()))))
 
-    tagged_words = dict(nltk.pos_tag((freqD).keys()))
     word_stats = list(zip(tagged_words.keys(), tagged_words.values(), freqD.values()))
     word_stats = sorted(word_stats, key = lambda word: word[2], reverse = True)
 
@@ -138,19 +140,21 @@ def get_freqd_visualization(country,frequencies):
 
 
 def main():
-    countries = {"United States": "US", "Brazil": "BR",
-                 "Australia": "AU", "Russia": "RU", "Mexico": "MX"}
-    country_dataframes = {}
+    country = "United States"
+    country_code = "US"
 
-    for country in countries.keys():
-        popular_videos_by_country_to_json(country, countries[country])
-        json_to_df(country)
-        country_dataframes[country] = json_to_df(country)
-        dist = get_word_dist(country, country_dataframes[country].title)
-        db_name = create_word_database(country, dist)
 
-        generator = TitleGenerator(db_name)
-        print("Generated Popular Youtube Video title: ", generator.generate_title1())
+    popular_videos_by_country_to_json(country, country_code)
+    json_to_df(country)
+    country_dataframe = json_to_df(country)
+    dist = get_word_dist(country, country_dataframe.title)
+    db_name = create_word_database(country, dist)
+
+    generator = TitleGenerator("United States")
+    print("Generated Popular Youtube Video title using simple generator1:\n", generator.generate_simple_title1())
+    print("Generated Popular Youtube Video title using simple generator2:\n", generator.generate_simple_title2())
+    print("Generated Popular Youtube Video title using generator1:\n", generator.generate_title1())
+    print("Generated Popular Youtube Video title using generator2:\n", generator.generate_title2())
 
 if __name__ == '__main__':
     main()
